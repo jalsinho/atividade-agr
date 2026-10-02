@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f0e8">
+  <title>Mural — Achados & Perdidos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="{{ url_for('index') }}" aria-label="Mural, início">
+      <span class="wordmark-icon" aria-hidden="true">M</span>
+      <span>MURAL<span class="wordmark-dot">.</span></span>
+    </a>
+    <span class="topbar-note">Comunidade que cuida</span>
+    <a class="topbar-link" href="#publicar">Publicar um item <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="page-title">
+      <div class="intro-copy">
+        <p class="eyebrow"><span></span> ACHADOS & PERDIDOS</p>
+        <h1 id="page-title">O que se perde<br>pode <em>voltar.</em></h1>
+        <p class="intro-description">Um ponto de encontro para objetos e pessoas. Viu algo por aí? Ajude a devolver.</p>
+      </div>
+      <div class="intro-stats" aria-label="Resumo do mural">
+        <div><strong>{{ total }}</strong><span>itens no mural</span></div>
+        <i aria-hidden="true"></i>
+        <div><strong>{{ active }}</strong><span>em aberto</span></div>
+      </div>
+      <div class="intro-mark" aria-hidden="true">↙</div>
+    </section>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="notices" aria-live="polite">
+          {% for category, message in messages %}<p class="notice notice-{{ category }}">{{ message }}</p>{% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <section class="workspace" aria-label="Mural de itens">
+      <aside class="publish-panel" id="publicar">
+        <div class="panel-heading">
+          <span class="section-index">01 / CONTRIBUA</span>
+          <span class="plus-mark" aria-hidden="true">+</span>
+        </div>
+        <h2>Coloque no<br>mural.</h2>
+        <p class="panel-intro">Uma informação pode fazer toda a diferença.</p>
+
+        <form action="{{ url_for('create_item') }}" method="post" class="publish-form">
+          <fieldset class="kind-fieldset">
+            <legend>Este item foi...</legend>
+            <div class="kind-options">
+              <label><input type="radio" name="kind" value="perdido" checked><span>Perdido</span></label>
+              <label><input type="radio" name="kind" value="encontrado"><span>Encontrado</span></label>
+            </div>
+          </fieldset>
+          <label class="field"><span>Nome do item</span><input name="name" maxlength="100" placeholder="Ex.: Chaveiro azul" required></label>
+          <label class="field"><span>Descrição</span><textarea name="description" maxlength="500" rows="3" placeholder="Cor, marca, algum detalhe..." required></textarea></label>
+          <label class="field"><span>Onde foi visto?</span><input name="location" maxlength="160" placeholder="Ex.: Biblioteca, bloco B" required></label>
+          <label class="field"><span>Como entrar em contato?</span><input name="contact" maxlength="160" placeholder="Telefone, e-mail ou @perfil" required></label>
+          <button class="submit-button" type="submit">Publicar item <span aria-hidden="true">↗</span></button>
+        </form>
+        <p class="privacy-note"><span aria-hidden="true">i</span> Seu contato ficará visível para quem acessar o mural.</p>
+      </aside>
+
+      <section class="board" aria-labelledby="board-title">
+        <div class="board-heading">
+          <div>
+            <span class="section-index">02 / MURAL DA COMUNIDADE</span>
+            <h2 id="board-title">Itens recentes<span class="board-count">{{ items|length }}</span></h2>
+          </div>
+          <span class="live-label"><span></span> ATUALIZADO</span>
+        </div>
+
+        <form class="filters" method="get" action="{{ url_for('index') }}">
+          <label class="search-box"><span aria-hidden="true">⌕</span><input type="search" name="q" value="{{ search }}" placeholder="Buscar no mural" aria-label="Buscar no mural"></label>
+          <label class="filter-select"><span class="visually-hidden">Tipo do item</span>
+            <select name="tipo" aria-label="Filtrar por tipo">
+              <option value="todos" {{ 'selected' if kind_filter == 'todos' else '' }}>Todos os tipos</option>
+              <option value="perdido" {{ 'selected' if kind_filter == 'perdido' else '' }}>Perdidos</option>
+              <option value="encontrado" {{ 'selected' if kind_filter == 'encontrado' else '' }}>Encontrados</option>
+            </select>
+          </label>
+          <label class="filter-select"><span class="visually-hidden">Status do item</span>
+            <select name="status" aria-label="Filtrar por status">
+              <option value="todos" {{ 'selected' if status_filter == 'todos' else '' }}>Todos os status</option>
+              <option value="Aberto" {{ 'selected' if status_filter == 'Aberto' else '' }}>Aberto</option>
+              <option value="Encontrado" {{ 'selected' if status_filter == 'Encontrado' else '' }}>Encontrado</option>
+              <option value="Devolvido" {{ 'selected' if status_filter == 'Devolvido' else '' }}>Devolvido</option>
+            </select>
+          </label>
+          <button class="filter-button" type="submit" aria-label="Aplicar filtros">↵</button>
+        </form>
+
+        <div class="item-list">
+          {% for item in items %}
+            <article class="item-row">
+              <div class="item-marker {{ 'marker-lost' if item.kind == 'perdido' else 'marker-found' }}" aria-hidden="true">{{ '!' if item.kind == 'perdido' else '+' }}</div>
+              <div class="item-main">
+                <div class="item-meta"><span class="kind-label {{ 'kind-lost' if item.kind == 'perdido' else 'kind-found' }}">{{ 'PERDIDO' if item.kind == 'perdido' else 'ENCONTRADO' }}</span><span class="item-date">{{ item.created_at[:10] }}</span></div>
+                <h3>{{ item.name }}</h3>
+                <p class="item-description">{{ item.description }}</p>
+                <div class="item-details"><span><b aria-hidden="true">⌖</b> {{ item.location }}</span><span class="item-contact">{{ item.contact }}</span></div>
+              </div>
+              <div class="item-action">
+                <span class="status status-{{ item.status|lower }}"><i></i>{{ item.status }}</span>
+                {% if item.status != 'Devolvido' %}
+                  <form action="{{ url_for('update_status', item_id=item.id) }}" method="post">
+                    <button class="resolve-button" type="submit">{{ 'Marcar encontrado' if item.status == 'Aberto' else 'Marcar devolvido' }} <span aria-hidden="true">→</span></button>
+                  </form>
+                {% else %}
+                  <span class="resolved-note">Finalizado</span>
+                {% endif %}
+              </div>
+            </article>
+          {% else %}
+            <div class="empty-state">
+              <span class="empty-symbol" aria-hidden="true">○</span>
+              <h3>{{ 'Nada encontrado por aqui.' if search or kind_filter != 'todos' or status_filter != 'todos' else 'O mural começa com você.' }}</h3>
+              <p>{{ 'Tente mudar os filtros ou a busca.' if search or kind_filter != 'todos' or status_filter != 'todos' else 'Publique um item perdido ou encontrado para ajudar alguém.' }}</p>
+              {% if search or kind_filter != 'todos' or status_filter != 'todos' %}<a href="{{ url_for('index') }}">Limpar filtros <span aria-hidden="true">↗</span></a>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        <footer class="board-footer"><span>FIM DA LISTA</span><span>FEITO PARA AJUDAR, FEITO EM COMUNIDADE</span></footer>
+      </section>
+    </section>
+  </main>
+
+  <footer class="site-footer"><a class="wordmark" href="{{ url_for('index') }}"><span class="wordmark-icon" aria-hidden="true">M</span><span>MURAL<span class="wordmark-dot">.</span></span></a><span>Um objeto de volta. Um dia melhor.</span><span>ACHADOS & PERDIDOS</span></footer>
+</body>
+</html>
